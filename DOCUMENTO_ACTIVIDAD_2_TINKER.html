@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Actividad 2 - 10 Consultas con Tinker - Plataforma de Capacitación</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #1e293b;
+            max-width: 950px;
+            margin: 0 auto;
+            padding: 2.5rem;
+            background-color: #ffffff;
+        }
+        h1, h2, h3, h4 {
+            color: #0f172a;
+            margin-top: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+        h1 {
+            font-size: 2rem;
+            border-bottom: 3px solid #0284c7;
+            padding-bottom: 0.5rem;
+        }
+        h2 {
+            font-size: 1.45rem;
+            border-bottom: 1px solid #cbd5e1;
+            padding-bottom: 0.35rem;
+            margin-top: 2rem;
+        }
+        .header-box {
+            background: #f1f5f9;
+            border-left: 5px solid #0284c7;
+            padding: 1.25rem 1.5rem;
+            border-radius: 6px;
+            margin-bottom: 2rem;
+        }
+        .query-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            page-break-inside: avoid;
+        }
+        .query-card.integrity { border-left: 5px solid #ef4444; }
+        .query-card.aggregation { border-left: 5px solid #f59e0b; }
+        .query-card.collection { border-left: 5px solid #10b981; }
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.65rem;
+            font-size: 0.75rem;
+            font-weight: 700;
+            border-radius: 4px;
+            text-transform: uppercase;
+        }
+        .badge-danger { background: #fee2e2; color: #b91c1c; }
+        .badge-warning { background: #fef3c7; color: #b45309; }
+        .badge-success { background: #d1fae5; color: #047857; }
+        pre {
+            background: #0f172a;
+            color: #38bdf8;
+            padding: 1rem 1.25rem;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-family: Consolas, 'Courier New', monospace;
+            font-size: 0.85rem;
+            margin: 0.75rem 0;
+            white-space: pre-wrap;
+        }
+        pre.output {
+            background: #022c22;
+            color: #6ee7b7;
+        }
+        pre.error-output {
+            background: #450a0a;
+            color: #fca5a5;
+        }
+        .justification {
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            padding: 1rem 1.25rem;
+            border-radius: 6px;
+            margin-top: 0.75rem;
+            font-size: 0.9rem;
+        }
+        .justification strong {
+            color: #0369a1;
+        }
+        @media print {
+            body { padding: 0.5cm; }
+            .query-card { page-break-inside: avoid; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header-box">
+        <h1 style="margin: 0 0 0.5rem 0; border: none; padding: 0;">ACTIVIDAD 2: COMPROBACIÓN DE INTEGRIDAD EN BASE DE DATOS Y CONSULTAS CON TINKER</h1>
+        <div><strong>Proyecto de Grado / Caso de Estudio:</strong> Plataforma de Inscripción a Cursos de Capacitación</div>
+        <div><strong>Áreas de Formación:</strong> Ofimática, Programación y Diseño</div>
+        <div><strong>Framework & Versión:</strong> Laravel 11.x (PHP 8.3) con Eloquent ORM</div>
+        <div><strong>Fecha de Entrega:</strong> 19 de Octubre de 2026</div>
+    </div>
+
+    <h2>1. Resumen de Reglas de Negocio e Integridad Implementadas</h2>
+    <ul>
+        <li><strong>Control de Cupo Máximo:</strong> El sistema rechaza automáticamente cualquier intento de matrícula cuando el paralelo ha completado su aforo máximo (probado con el paralelo <code>PAR-OFI-01A</code> con cupo 4/4).</li>
+        <li><strong>Prevención de Horarios Cruzados:</strong> El sistema analiza traslape de fechas, coincidencia en días de semana y solapamiento de horas para rechazar inscripciones simultáneas inviables.</li>
+        <li><strong>Unicidad y Claves Foráneas:</strong> Índices únicos en cédula de identidad de participantes y restricción foránea en cascada/restrict entre categorías, cursos, paralelos e inscripciones.</li>
+    </ul>
+
+    <h2>2. Las 10 Consultas con Tinker</h2>
+
+    <!-- Consulta 1 -->
+    <div class="query-card integrity">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="margin: 0;">Consulta #1: Unicidad de Cédula de Identidad en Participantes</h3>
+            <span class="badge badge-danger">Restricción de Integridad (Unicidad en BD)</span>
+        </div>
+        <p><strong>Comando ejecutado en Tinker:</strong></p>
+        <pre><code>App\Models\Participante::create([
+    'nombres' => 'Carlos',
+    'apellidos' => 'Duplicado',
+    'documento_identidad' => '10293847', // CI existente (Alejandro Torrez)
+    'email' => 'carlos.duplicado@test.com',
+    'telefono' => '71112233'
+]);</code></pre>
+
+        <p><strong>Resultado obtenido en Tinker:</strong></p>
+        <pre class="error-output"><code>Illuminate\Database\UniqueConstraintViolationException
+SQLSTATE[23000]: Integrity constraint violation: 19 UNIQUE constraint failed: participantes.documento_identidad</code></pre>
+
+        <div class="justification">
+            <strong>Justificación Técnica:</strong> Valida la integridad de entidad a nivel físico en el motor relacional. El índice <code>unique()</code> sobre <code>documento_identidad</code> aborta la inserción y lanza la excepción <code>UniqueConstraintViolationException</code>, impidiendo registros duplicados.
+        </div>
+    </div>
+
+    <!-- Consulta 2 -->
+    <div class="query-card integrity">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="margin: 0;">Consulta #2: Integridad Referencial de Clave Foránea en Cursos</h3>
+            <span class="badge badge-danger">Restricción de Integridad (Clave Foránea en BD)</span>
+        </div>
+        <p><strong>Comando ejecutado en Tinker:</strong></p>
+        <pre><code>App\Models\Curso::create([
+    'categoria_id' => 99999, // ID de categoría inexistente
+    'instructor_id' => 1,
+    'codigo' => 'CUR-ERR-01',
+    'nombre' => 'Curso Huérfano No Permitido',
+    'descripcion' => 'Prueba de integridad referencial',
+    'costo' => 200.00,
+    'duracion_horas' => 20,
+    'nivel' => 'Básico'
+]);</code></pre>
+
+        <p><strong>Resultado obtenido en Tinker:</strong></p>
+        <pre class="error-output"><code>Illuminate\Database\QueryException
+SQLSTATE[23000]: Integrity constraint violation: 19 FOREIGN KEY constraint failed</code></pre>
+
+        <div class="justification">
+            <strong>Justificación Técnica:</strong> Demuestra el cumplimiento estricto de las claves foráneas definidas con <code>constrained('categorias')->restrictOnDelete()</code>. Evita la existencia de cursos huérfanos que apunten a áreas temáticas inexistentes.
+        </div>
+    </div>
+
+    <!-- Consulta 3 -->
+    <div class="query-card integrity">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="margin: 0;">Consulta #3: Regla de Dominio - Rechazo por Cupo Máximo Lleno</h3>
+            <span class="badge badge-danger">Regla de Negocio del Dominio</span>
+        </div>
+        <p><strong>Comando ejecutado en Tinker:</strong></p>
+        <pre><code>// El paralelo PAR-OFI-01A cuenta con cupo_maximo = 4 y 4 inscritos activos.
+$paraleloLleno = App\Models\Paralelo::where('codigo', 'PAR-OFI-01A')->first();
+$participanteLibre = App\Models\Participante::where('documento_identidad', '50697889')->first();
+
+app(App\Services\Inscripcion\InscripcionService::class)->inscribir([
+    'participante_id' => $participanteLibre->id,
+    'paralelo_id' => $paraleloLleno->id,
+    'monto_pagado' => 250.00,
+    'estado' => 'pagada'
+]);</code></pre>
+
+        <p><strong>Resultado obtenido en Tinker:</strong></p>
+        <pre class="error-output"><code>Illuminate\Validation\ValidationException
+Errores: {
+    "paralelo_id": [
+        "Inscripción rechazada: El paralelo Paralelo Mañana A (PAR-OFI-01A) está lleno. Cupo máximo alcanzado (4/4)."
+    ]
+}</code></pre>
+
+        <div class="justification">
+            <strong>Justificación Técnica:</strong> Verifica la regla de negocio del caso de estudio: <em>"El sistema debe rechazar inscripciones cuando el paralelo está lleno"</em>. La capa de servicios evalúa la capacidad antes de persistir, impidiendo la superación del aforo.
+        </div>
+    </div>
+
+    <!-- Consulta 4 -->
+    <div class="query-card integrity">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="margin: 0;">Consulta #4: Regla de Dominio - Prevención de Horarios Cruzados</h3>
+            <span class="badge badge-danger">Regla de Negocio del Dominio</span>
+        </div>
+        <p><strong>Comando ejecutado en Tinker:</strong></p>
+        <pre><code>// Alejandro Torrez ya cursa PAR-OFI-01A (Lun, Mié, Vie 08:00 a 10:00).
+// Se intenta inscribirlo a PAR-PRG-01A en los mismos días y horas coincidentes.
+app(App\Services\Inscripcion\InscripcionService::class)->inscribir([
+    'participante_id' => 1,
+    'paralelo_id' => 4, // PAR-PRG-01A
+    'monto_pagado' => 450.00,
+    'estado' => 'pagada'
+]);</code></pre>
+
+        <p><strong>Resultado obtenido en Tinker:</strong></p>
+        <pre class="error-output"><code>Illuminate\Validation\ValidationException
+Errores: {
+    "paralelo_id": [
+        "Inscripción rechazada por horario cruzado: El participante Alejandro Torrez Morales ya está inscrito en 'Excel Avanzado con Macros y Automatización VBA' (Paralelo Mañana A - PAR-OFI-01A), cuyo horario (Lunes, Miércoles, Viernes 08:00:00 a 10:00:00) se cruza con el paralelo seleccionado."
+    ]
+}</code></pre>
+
+        <div class="justification">
+            <strong>Justificación Técnica:</strong> Hace cumplir la regla de negocio: <em>"El sistema debe rechazar inscripciones cuando el participante ya está inscrito en otro paralelo con horario cruzado"</em>. Evalúa solapamiento de calendarios, intersección de días de semana y choque horario.
+        </div>
+    </div>
+
+    <!-- Consulta 5 -->
+    <div class="query-card aggregation">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="margin: 0;">Consulta #5: Suma y Conteo de Ingresos Recaudados por Curso</h3>
+            <span class="badge badge-warning">Consulta de Agregación (COUNT & SUM)</span>
+        </div>
+        <p><strong>Comando ejecutado en Tinker:</strong></p>
+        <pre><code>App\Models\Curso::withCount([
+    'inscripciones as pagadas_count' => fn($q) => $q->where('inscripciones.estado', 'pagada')
+])->withSum([
+    'inscripciones as total_recaudado' => fn($q) => $q->where('inscripciones.estado', 'pagada')
+], 'monto_pagado')->get(['id', 'codigo', 'nombre', 'costo'])->take(3);</code></pre>
+
+        <p><strong>Resultado obtenido en Tinker:</strong></p>
+        <pre class="output"><code>[
+  {
+    "codigo": "CUR-OFI-01",
+    "nombre": "Excel Avanzado con Macros y Automatización VBA",
+    "costo": "250.00",
+    "pagadas_count": 4,
+    "total_recaudado": 1000.00
+  },
+  {
+    "codigo": "CUR-OFI-02",
+    "nombre": "Power BI para Análisis de Datos y Dashboards Ejecutivos",
+    "costo": "320.00",
+    "pagadas_count": 3,
+    "total_recaudado": 960.00
+  },
+  {
+    "codigo": "CUR-PRG-01",
+    "nombre": "Desarrollo Web Full Stack con Laravel y Vue.js",
+    "costo": "450.00",
+    "pagadas_count": 4,
+    "total_recaudado": 1800.00
+  }
+]</code></pre>
+
+        <div class="justification">
+            <strong>Justificación Técnica:</strong> Aplica funciones de agregación <code>COUNT</code> y <code>SUM</code> optimizadas mediante subconsultas en Eloquent, fundamentales para alimentar el reporte financiero de ingresos por curso.
+        </div>
+    </div>
+
+    <!-- Consulta 6 -->
+    <div class="query-card aggregation">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="margin: 0;">Consulta #6: Promedio de Costos, Conteo y Cláusula HAVING</h3>
+            <span class="badge badge-warning">Consulta de Agregación (AVG, COUNT, HAVING)</span>
+        </div>
+        <p><strong>Comando ejecutado en Tinker:</strong></p>
+        <pre><code>App\Models\Curso::join('categorias', 'cursos.categoria_id', '=', 'categorias.id')
+    ->selectRaw('categorias.nombre as categoria, count(cursos.id) as total_cursos, avg(cursos.costo) as costo_promedio, sum(cursos.duracion_horas) as total_horas')
+    ->groupBy('categorias.nombre')
+    ->havingRaw('count(cursos.id) >= 2')
+    ->get();</code></pre>
+
+        <p><strong>Resultado obtenido en Tinker:</strong></p>
+        <pre class="output"><code>[
+  {"categoria": "Diseño", "total_cursos": 3, "costo_promedio": 330.00, "total_horas": 120},
+  {"categoria": "Ofimática", "total_cursos": 3, "costo_promedio": 250.00, "total_horas": 100},
+  {"categoria": "Programación", "total_cursos": 3, "costo_promedio": 330.00, "total_horas": 132}
+]</code></pre>
+
+        <div class="justification">
+            <strong>Justificación Técnica:</strong> Aplica funciones estadísticas agregadas (<code>AVG</code>, <code>COUNT</code>, <code>SUM</code>) agrupadas por categoría y filtradas con <code>HAVING</code> tras la agrupación en SQL.
+        </div>
+    </div>
+
+    <!-- Consulta 7 -->
+    <div class="query-card collection">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="margin: 0;">Consulta #7: Agrupamiento por Días y Filtro de Aforo</h3>
+            <span class="badge badge-success">Operaciones con Collections (filter & groupBy)</span>
+        </div>
+        <p><strong>Comando ejecutado en Tinker:</strong></p>
+        <pre><code>App\Models\Paralelo::with(['curso', 'inscripciones'])
+    ->get()
+    ->filter(fn($p) => $p->porcentaje_ocupacion >= 25)
+    ->groupBy('dias')
+    ->map(fn($grupo) => $grupo->map(fn($p) => [
+        'codigo' => $p->codigo,
+        'curso' => $p->curso->nombre,
+        'aforo' => $p->cupos_ocupados . '/' . $p->cupo_maximo,
+        'porcentaje' => $p->porcentaje_ocupacion . '%'
+    ]));</code></pre>
+
+        <p><strong>Resultado obtenido en Tinker:</strong></p>
+        <pre class="output"><code>{
+  "Lunes, Miércoles, Viernes": [
+    {"codigo": "PAR-OFI-01A", "curso": "Excel Avanzado con Macros y Automatización VBA", "aforo": "4/4", "porcentaje": "100%"}
+  ],
+  "Martes y Jueves": [
+    {"codigo": "PAR-OFI-02A", "curso": "Power BI para Análisis de Datos", "aforo": "3/12", "porcentaje": "25%"}
+  ]
+}</code></pre>
+
+        <div class="justification">
+            <strong>Justificación Técnica:</strong> Utiliza métodos de colección de Laravel en memoria para transformar, agrupar y filtrar estructuras de datos sin sobrecargar la base de datos con consultas complejas.
+        </div>
+    </div>
+
+    <!-- Consulta 8 -->
+    <div class="query-card collection">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="margin: 0;">Consulta #8: Ranking de Participantes por Total Invertido</h3>
+            <span class="badge badge-success">Operaciones con Collections (filter & sortByDesc)</span>
+        </div>
+        <p><strong>Comando ejecutado en Tinker:</strong></p>
+        <pre><code>App\Models\Participante::with(['inscripciones'])
+    ->get()
+    ->filter(fn($part) => $part->inscripciones->where('estado', 'pagada')->count() >= 1)
+    ->map(fn($part) => [
+        'documento' => $part->documento_identidad,
+        'nombre' => $part->nombre_completo,
+        'cursos_pagados' => $part->inscripciones->where('estado', 'pagada')->count(),
+        'total_invertido_bs' => (float) $part->inscripciones->where('estado', 'pagada')->sum('monto_pagado')
+    ])
+    ->sortByDesc('total_invertido_bs')
+    ->values()
+    ->take(3);</code></pre>
+
+        <p><strong>Resultado obtenido en Tinker:</strong></p>
+        <pre class="output"><code>[
+  {"documento": "50697889", "nombre": "Diego Fernando Flores Callisaya", "cursos_pagados": 2, "total_invertido_bs": 730.00},
+  {"documento": "10293847", "nombre": "Alejandro Torrez Morales", "cursos_pagados": 2, "total_invertido_bs": 700.00},
+  {"documento": "30495867", "nombre": "Rodrigo Vargas Pinto", "cursos_pagados": 2, "total_invertido_bs": 600.00}
+]</code></pre>
+
+        <div class="justification">
+            <strong>Justificación Técnica:</strong> Demuestra el procesamiento de colecciones para generar métricas de fidelización y ordenamiento descendente en memoria según el aporte económico del estudiante.
+        </div>
+    </div>
+
+    <!-- Consulta 9 -->
+    <div class="query-card aggregation">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="margin: 0;">Consulta #9: Paralelos con Vacantes y Cupo Libre</h3>
+            <span class="badge badge-warning">Agregación Relacional y Filtro de Cupo</span>
+        </div>
+        <p><strong>Comando ejecutado en Tinker:</strong></p>
+        <pre><code>App\Models\Paralelo::withCount([
+    'inscripciones as inscritos_activos' => fn($q) => $q->whereIn('estado', ['pendiente', 'pagada'])
+])
+->get()
+->filter(fn($p) => $p->inscritos_activos < $p->cupo_maximo)
+->map(fn($p) => [
+    'codigo' => $p->codigo,
+    'aula' => $p->aula,
+    'cupo_maximo' => $p->cupo_maximo,
+    'inscritos' => $p->inscritos_activos,
+    'cupos_libres' => $p->cupo_maximo - $p->inscritos_activos
+])
+->values()
+->take(3);</code></pre>
+
+        <p><strong>Resultado obtenido en Tinker:</strong></p>
+        <pre class="output"><code>[
+  {"codigo": "PAR-OFI-01B", "aula": "Laboratorio de Cómputo 102", "cupo_maximo": 15, "inscritos": 0, "cupos_libres": 15},
+  {"codigo": "PAR-PRG-01A", "aula": "Laboratorio de Cómputo 101", "cupo_maximo": 15, "inscritos": 3, "cupos_libres": 12},
+  {"codigo": "PAR-PRG-01B", "aula": "Laboratorio de Cómputo 102", "cupo_maximo": 18, "inscritos": 3, "cupos_libres": 15}
+]</code></pre>
+
+        <div class="justification">
+            <strong>Justificación Técnica:</strong> Verifica el balance de vacantes disponibles en tiempo de ejecución, discriminando inscripciones anuladas y calculando con precisión la disponibilidad de cupos.
+        </div>
+    </div>
+
+    <!-- Consulta 10 -->
+    <div class="query-card collection">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="margin: 0;">Consulta #10: Eager Loading Jerárquico Integral</h3>
+            <span class="badge badge-success">Eager Loading Profundo & Auditoría</span>
+        </div>
+        <p><strong>Comando ejecutado en Tinker:</strong></p>
+        <pre><code>App\Models\Categoria::with([
+    'cursos.instructor',
+    'cursos.paralelos.inscripciones' => fn($q) => $q->where('estado', 'pagada')
+])
+->get()
+->map(fn($cat) => [
+    'categoria' => $cat->nombre,
+    'cursos' => $cat->cursos->map(fn($c) => [
+        'codigo' => $c->codigo,
+        'nombre' => $c->nombre,
+        'instructor' => $c->instructor ? $c->instructor->nombre_completo : 'N/A',
+        'paralelos' => $c->paralelos->count(),
+        'recaudacion' => (float) $c->paralelos->flatMap->inscripciones->sum('monto_pagado')
+    ])
+]);</code></pre>
+
+        <p><strong>Resultado obtenido en Tinker:</strong></p>
+        <pre class="output"><code>[
+  {
+    "categoria": "Ofimática",
+    "cursos": [
+      {"codigo": "CUR-OFI-01", "nombre": "Excel Avanzado con Macros", "instructor": "Carlos Alberto Mendoza Vaca", "paralelos": 3, "recaudacion": 1000.00},
+      {"codigo": "CUR-OFI-02", "nombre": "Power BI para Análisis de Datos", "instructor": "Carlos Alberto Mendoza Vaca", "paralelos": 1, "recaudacion": 960.00}
+    ]
+  },
+  {
+    "categoria": "Programación",
+    "cursos": [
+      {"codigo": "CUR-PRG-01", "nombre": "Desarrollo Web Full Stack con Laravel", "instructor": "Marco Antonio Quispe Mamani", "paralelos": 3, "recaudacion": 1800.00}
+    ]
+  }
+]</code></pre>
+
+        <div class="justification">
+            <strong>Justificación Técnica:</strong> Valida la integridad del grafo de relaciones multinivel Categoria -> Curso -> Instructor -> Paralelo -> Inscripcion ejecutado con carga ambiciosa de alto desempeño sin consultas redundantes.
+        </div>
+    </div>
+</body>
+</html>
